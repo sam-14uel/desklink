@@ -5,6 +5,7 @@ coordinates with the tunnel.
 """
 
 import asyncio
+import contextlib
 import logging
 from typing import Optional
 
@@ -82,6 +83,13 @@ class DeskLinkServer:
                 Middleware(BearerAuthMiddleware, token=self.config.auth.token)
             )
 
+        # Must run the session manager in the host app lifespan.
+        # Mounting streamable_http_app() alone does not start it (known MCP SDK issue).
+        @contextlib.asynccontextmanager
+        async def lifespan(app: Starlette):
+            async with mcp.session_manager.run():
+                yield
+
         # FastMCP's streamable_http_app serves at its configured streamable_http_path
         # (default /mcp). We mount the app at root so the public endpoint is
         # http://host:port/mcp .
@@ -90,6 +98,7 @@ class DeskLinkServer:
                 Mount("/", app=mcp.streamable_http_app()),
             ],
             middleware=middleware,
+            lifespan=lifespan,
         )
 
         config = uvicorn.Config(

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 
 def is_path_allowed(path: Path, allowed_dirs: List[Path]) -> bool:
@@ -39,7 +40,14 @@ def create_filesystem_server(
     Returns:
         A configured FastMCP instance.
     """
-    mcp = FastMCP("DeskLink Filesystem")
+    # Disable DNS rebinding protection so public tunnels (ngrok, Cloudflare, etc.)
+    # are accepted. Security is enforced by the Bearer token middleware instead.
+    mcp = FastMCP(
+        "DeskLink Filesystem",
+        transport_security=TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        ),
+    )
 
     allowed = [p.resolve() for p in allowed_directories]
 
